@@ -21,6 +21,9 @@ class Database:
         self.arq_maquinas = os.path.join(pasta_docs, "sigma_maquinas.json")
         self.arq_usuarios = os.path.join(pasta_docs, "sigma_usuarios.json")
 
+
+#Copiadores de arquivos:
+
     def copiar_foto(self, caminho_original):
         """Copia a foto original para a pasta do projeto para não perdê-la"""
         if not caminho_original: return None
@@ -35,6 +38,18 @@ class Database:
             print(f"Erro ao copiar foto: {e}")
             return None
 
+    def copiar_manual(self, caminho_origem):
+            if not caminho_origem: return None
+            if not os.path.exists("manuais"): os.makedirs("manuais")
+            
+            nome_arq = os.path.basename(caminho_origem)
+            destino = os.path.join("manuais", nome_arq)
+            
+            import shutil
+            shutil.copy2(caminho_origem, destino)
+            return destino
+    
+#carregadores
     def carregar_maquinas(self):
         if os.path.exists(self.arq_maquinas):
             with open(self.arq_maquinas, 'r', encoding='utf-8') as f:
@@ -47,6 +62,8 @@ class Database:
                 return [Usuario(**u) for u in json.load(f)]
         return []
 
+
+#Salvar
     def salvar(self, maquinas, usuarios):
         dados_m = [m.__dict__ for m in maquinas]
         with open(self.arq_maquinas, 'w', encoding='utf-8') as f:

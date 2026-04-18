@@ -20,7 +20,7 @@ class SIGMA:
         self.maquinas = self.db.carregar_maquinas()
         self.usuarios = self.db.carregar_usuarios()
         self.usuario_logado = None
-        self.tema_atual = "claro"
+        self.tema_atual = "escuro"
 
         self.auth_ui = AuthInterface(self)
         self.main_ui = MainInterface(self)
@@ -39,46 +39,145 @@ class SIGMA:
         self.auth_ui.tela_login()
 
     # --- LÓGICA DE MÁQUINAS ---
-    def add_maq(self):
-        nome = self.main_ui.en_n.get()
-        agenda = self.main_ui.en_a.get()
-        if nome:
-            # Criando conforme sua classe Maquina
-            nova = Maquina(nome, "---", agenda)
+    def janela_cadastro_maquina(self):
+        cores = TEMAS[self.tema_atual]
+        win = tk.Toplevel(self.root)
+        win.title("Cadastrar Ativo")
+        win.geometry("400x450")
+        win.config(bg=cores["bg"])
+
+        tk.Label(win, text="NOME DA MÁQUINA/VEÍCULO:", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
+        en_nome = tk.Entry(win, width=35, bg=cores["entry_bg"], fg=cores["fg"]); en_nome.pack()
+
+        tk.Label(win, text="PRÓXIMA MANUTENÇÃO (Opcional):", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
+        en_data = tk.Entry(win, width=35, bg=cores["entry_bg"], fg=cores["fg"]); en_data.pack()
+        en_data.bind("<KeyRelease>", lambda e: aplicar_mascara_data(e, en_data))
+
+        caminho_manual = tk.StringVar(value="")
+        lbl_manual = tk.Label(win, text="Nenhum manual anexado", font=("Arial", 8), bg=cores["bg"], fg="gray")
+
+        def selecionar_manual():
+            # Aceita PDF, Texto ou todos os arquivos
+            arq = filedialog.askopenfilename(filetypes=[("Documentos", "*.pdf *.txt *.docx"), ("Todos", "*.*")])
+            if arq:
+                caminho_manual.set(arq)
+                lbl_manual.config(text=f"📄 {os.path.basename(arq)}", fg="blue")
+
+        tk.Button(win, text="📂 ANEXAR MANUAL (PDF/TXT)", command=selecionar_manual).pack(pady=10)
+        lbl_manual.pack()
+
+        def salvar_nova():
+            nome = en_nome.get().strip()
+            if not nome:
+                messagebox.showwarning("Erro", "O nome é obrigatório!")
+                return
+            
+            # Copia o manual para a pasta do sistema
+            manual_final = self.db.copiar_manual(caminho_manual.get())
+            
+            nova = Maquina(nome, "---", en_data.get(), manual=manual_final)
             self.maquinas.append(nova)
             self.db.salvar(self.maquinas, self.usuarios)
             self.main_ui.atualizar_lista()
-            self.main_ui.en_n.delete(0, tk.END)
-            self.main_ui.en_a.delete(0, tk.END)
-        else:
-            messagebox.showwarning("Aviso", "Digite o nome da máquina!")
+            win.destroy()
+            messagebox.showinfo("Sucesso", f"{nome} cadastrado!")
 
+        tk.Button(win, text="SALVAR MÁQUINA", bg="green", fg="white", font=("bold"),
+                  command=salvar_nova, height=2).pack(pady=30)
+        
     def ver_hist(self):
         sel = self.main_ui.tree.selection()
         if not sel: return
         m_nome = self.main_ui.tree.item(sel)['values'][0]
         cores = TEMAS[self.tema_atual]
         
-        for m in self.maquinas:
-            if m.nome == m_nome:
-                win_h = tk.Toplevel(self.root)
-                win_h.title(f"Histórico {m.nome}")
-                win_h.geometry("500x450")
-                win_h.config(bg=cores["bg"])
-                
-                txt = tk.Text(win_h, padx=10, pady=10, bg=cores["entry_bg"], fg=cores["fg"])
-                txt.pack(fill="both", expand=True)
-                txt.insert("1.0", "\n".join(m.insumos_usados))
-                txt.config(state="disabled")
+        # Busca o objeto da máquina
+        maquina_obj = next((m for m in self.maquinas if m.nome == m_nome), None)
+        if not maquina_obj: return
 
-                if m.fotos:
-                    def abrir_img():
-                        path = m.fotos[-1]
-                        if os.path.exists(path): os.startfile(path)
-                        else: messagebox.showerror("Erro", "Imagem não encontrada.")
-                    
-                    tk.Button(win_h, text="🖼️ VER ÚLTIMA FOTO", bg="orange", 
-                              command=abrir_img).pack(pady=5)
+        win_h = tk.Toplevel(self.root)
+        win_h.title(f"Histórico - {maquina_obj.nome}")
+        win_h.geometry("600x600")
+        win_h.config(bg=cores["bg"])
+
+        # --- HEADER FIXO (Nome + Manual) ---
+        header_top = tk.Frame(win_h, bg=cores["bg"], pady=10, padx=15)
+        header_top.pack(fill="x")
+
+        tk.Label(header_top, text=f"HISTÓRICO: {maquina_obj.nome}", 
+                 font=("Arial", 11, "bold"), bg=cores["bg"], fg="#007bff").pack(side="left")
+
+        def abrir_manual():
+            if maquina_obj.manual and os.path.exists(maquina_obj.manual):
+                os.startfile(maquina_obj.manual)
+            else:
+                messagebox.showinfo("Aviso", "Manual não disponível para esta máquina.")
+
+        tk.Button(header_top, text="📖 MANUAL TÉCNICO", font=("Arial", 8, "bold"),
+                  bg="#6c757d", fg="white", command=abrir_manual).pack(side="right")
+
+        # --- ÁREA DE SCROLL ---
+        canvas = tk.Canvas(win_h, bg=cores["bg"], highlightthickness=0)
+        scroll = tk.Scrollbar(win_h, orient="vertical", command=canvas.yview)
+        frame_lista = tk.Frame(canvas, bg=cores["bg"])
+
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        canvas.create_window((0, 0), window=frame_lista, anchor="nw", width=560)
+        canvas.configure(yscrollcommand=scroll.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        # Inverter a lista para mostrar a manutenção mais recente primeiro
+        for entrada in reversed(maquina_obj.insumos_usados):
+            if "--- DATA:" in entrada:
+                d_h, mec, proc, ins = "Antigo", "N/A", entrada.replace("\n", " "), "Ver log"
+            else:
+                try:
+                    partes = entrada.split(" | ")
+                    d_h = partes[0] if len(partes) > 0 else "N/A"
+                    mec = partes[1] if len(partes) > 1 else "N/A"
+                    proc = partes[2] if len(partes) > 2 else "N/A"
+                    ins = partes[3] if len(partes) > 3 else "N/A"
+                except:
+                    d_h, mec, proc, ins = "Erro", "Erro", "Formato inválido", "N/A"
+
+            card = tk.Frame(frame_lista, bg=cores["entry_bg"], bd=1, relief="solid")
+            card.pack(fill="x", padx=10, pady=10)
+
+            header_card = tk.Frame(card, bg="#007bff")
+            header_card.pack(fill="x")
+            
+            tk.Label(header_card, text=f"📅 {d_h}    👤 Mecânico: {mec}", font=("Arial", 9, "bold"),
+                     bg="#007bff", fg="white", anchor="w", padx=10).pack(fill="x")
+
+            body = tk.Frame(card, bg=cores["entry_bg"], padx=10, pady=5)
+            body.pack(fill="x")
+
+            tk.Label(body, text="PROCEDIMENTOS:", font=("Arial", 8, "bold"),
+                     bg=cores["entry_bg"], fg="#007bff", anchor="w").pack(fill="x")
+            tk.Label(body, text=proc, bg=cores["entry_bg"], fg=cores["fg"], 
+                     anchor="w", wraplength=500, justify="left").pack(fill="x", pady=(0, 5))
+
+            tk.Label(body, text="INSUMOS:", font=("Arial", 8, "bold"),
+                     bg=cores["entry_bg"], fg="#28a745", anchor="w").pack(fill="x")
+            tk.Label(body, text=ins, bg=cores["entry_bg"], fg=cores["fg"], 
+                     anchor="w", wraplength=500, justify="left").pack(fill="x")
+
+        frame_lista.update_idletasks()
+        canvas.config(scrollregion=canvas.bbox("all"))
+
+        # Botão de Fotos no rodapé (Fixo)
+        if maquina_obj.fotos:
+            tk.Button(win_h, text="🖼️ VER ÚLTIMA FOTO ANEXADA", bg="orange", font=("Arial", 10, "bold"),
+                      command=lambda: os.startfile(maquina_obj.fotos[-1]) if os.path.exists(maquina_obj.fotos[-1]) else None).pack(fill="x", padx=20, pady=10)
+            
+
+#Janela de Realizar manutenção
 
     def janela_manutencao(self):
         sel = self.main_ui.tree.selection()
@@ -88,51 +187,90 @@ class SIGMA:
         
         m_nome = self.main_ui.tree.item(sel)['values'][0]
         cores = TEMAS[self.tema_atual]
+        
+        # Busca o objeto da máquina selecionada para pegar o caminho do manual
+        maquina_obj = next((m for m in self.maquinas if m.nome == m_nome), None)
+        
         win = tk.Toplevel(self.root)
         win.title(f"Manutenção - {m_nome}")
-        win.geometry("450x600")
+        win.geometry("450x650")
         win.config(bg=cores["bg"])
         
-        tk.Label(win, text="PROCEDIMENTOS:", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
-        txt_proc = tk.Text(win, height=6, bg=cores["entry_bg"], fg=cores["fg"]); txt_proc.pack(padx=10)
+        # --- HEADER DA JANELA (Nome + Botão Manual) ---
+        header_manut = tk.Frame(win, bg=cores["bg"])
+        header_manut.pack(fill="x", pady=10, padx=15)
+
+        tk.Label(header_manut, text=f"MÁQUINA: {m_nome}", 
+                 font=("Arial", 10, "bold"), bg=cores["bg"], fg="#007bff").pack(side="left")
+
+        def abrir_manual():
+            if maquina_obj and maquina_obj.manual:
+                if os.path.exists(maquina_obj.manual):
+                    os.startfile(maquina_obj.manual)
+                else:
+                    messagebox.showerror("Erro", "Arquivo do manual não encontrado!")
+            else:
+                messagebox.showinfo("Aviso", "Esta máquina não possui manual cadastrado.")
+
+        # Botão do Manual (só aparece se quiser, ou fica cinza se não tiver)
+        btn_manual = tk.Button(header_manut, text="📖 VER MANUAL", font=("Arial", 8, "bold"),
+                               bg="#6c757d", fg="white", command=abrir_manual, padx=5)
+        btn_manual.pack(side="right")
+
+        # --- CAMPOS DE TEXTO ---
+        tk.Label(win, text="PROCEDIMENTOS REALIZADOS:", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
+        txt_proc = tk.Text(win, height=6, bg=cores["entry_bg"], fg=cores["fg"], font=("Arial", 9)); txt_proc.pack(padx=15, fill="x")
         
-        tk.Label(win, text="INSUMOS:", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
-        txt_ins = tk.Text(win, height=4, bg=cores["entry_bg"], fg=cores["fg"]); txt_ins.pack(padx=10)
+        tk.Label(win, text="INSUMOS UTILIZADOS:", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
+        txt_ins = tk.Text(win, height=4, bg=cores["entry_bg"], fg=cores["fg"], font=("Arial", 9)); txt_ins.pack(padx=15, fill="x")
         
         tk.Label(win, text="PRÓXIMA DATA (AAAA-MM-DD):", bg=cores["bg"], fg=cores["fg"]).pack(pady=5)
-        ent_data = tk.Entry(win, bg=cores["entry_bg"], fg=cores["fg"]); ent_data.pack()
+        ent_data = tk.Entry(win, bg=cores["entry_bg"], fg=cores["fg"], justify="center"); ent_data.pack()
         ent_data.bind("<KeyRelease>", lambda e: aplicar_mascara_data(e, ent_data))
         
         caminho_foto = tk.StringVar(value="")
+        lbl_foto = tk.Label(win, text="Nenhuma foto anexada", font=("Arial", 8), bg=cores["bg"], fg="gray")
+        
         def selecionar_foto():
             arq = filedialog.askopenfilename(filetypes=[("Imagens", "*.jpg *.png *.jpeg")])
-            if arq: caminho_foto.set(arq)
+            if arq: 
+                caminho_foto.set(arq)
+                lbl_foto.config(text="📸 Foto pronta!", fg="#28a745")
 
-        tk.Button(win, text="📸 ANEXAR FOTO", command=selecionar_foto).pack(pady=10)
+        tk.Button(win, text="📸 ANEXAR FOTO", command=selecionar_foto, bg=cores["btn_bg"], fg=cores["fg"]).pack(pady=10)
+        lbl_foto.pack()
 
         def finalizar():
+            proc_val = txt_proc.get('1.0', 'end-1c').strip().replace("\n", ", ")
+            ins_val = txt_ins.get('1.0', 'end-1c').strip().replace("\n", ", ")
+
+            if not proc_val or not ins_val:
+                messagebox.showwarning("Aviso", "Preencha os procedimentos e insumos!")
+                return
+
             agora = datetime.now().strftime("%d/%m/%Y %H:%M")
             novo_caminho = self.db.copiar_foto(caminho_foto.get())
             
-            for m in self.maquinas:
-                if m.nome == m_nome:
-                    m.ultima_manutencao = agora
-                    registro = f"--- DATA: {agora} por {self.usuario_logado.nome} ---\n"
-                    registro += f"PROC: {txt_proc.get('1.0', 'end-1c')}\n"
-                    registro += f"INSUMOS: {txt_ins.get('1.0', 'end-1c')}\n"
-                    if novo_caminho:
-                        m.fotos.append(novo_caminho)
-                    m.insumos_usados.append(registro)
-                    if ent_data.get(): m.agendamento = ent_data.get()
+            registro_formatado = f"{agora} | {self.usuario_logado.nome} | {proc_val} | {ins_val}"
+            
+            if maquina_obj:
+                maquina_obj.ultima_manutencao = agora
+                if novo_caminho:
+                    maquina_obj.fotos.append(novo_caminho)
+                maquina_obj.insumos_usados.append(registro_formatado)
+                if ent_data.get(): 
+                    maquina_obj.agendamento = ent_data.get()
             
             self.db.salvar(self.maquinas, self.usuarios)
             self.main_ui.atualizar_lista()
             win.destroy()
             messagebox.showinfo("Sucesso", "Manutenção registrada!")
 
-        tk.Button(win, text="FINALIZAR", bg="green", fg="white", command=finalizar).pack(pady=20)
+        tk.Button(win, text="💾 FINALIZAR MANUTENÇÃO", bg="#28a745", fg="white", 
+                  font=("Arial", 10, "bold"), command=finalizar, height=2, width=30).pack(pady=20)
+        
 
-    # --- CONFIGS E PERFIL (Já estavam corretos) ---
+    # --- CONFIGS E PERFIL ---
     def janela_configuracoes(self):
         win = tk.Toplevel(self.root)
         win.title("Temas")

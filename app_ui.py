@@ -47,23 +47,34 @@ class MainInterface:
         tk.Button(header, text="⚙️ Config", command=self.app.janela_configuracoes, 
                   bg="#004a8d", fg="white", bd=0).pack(side="left", padx=10)
 
-        # --- GERENCIAR MÁQUINAS ---
+# --- GERENCIAR MÁQUINAS ---
+
+# --- GERENCIAR MÁQUINAS ---
+
         f_cad = tk.LabelFrame(self.app.root, text=" Gerenciar Máquinas ", padx=10, pady=10, 
                               bg=cores["bg"], fg=cores["fg"])
         f_cad.pack(fill="x", padx=20, pady=10)
         
-        tk.Label(f_cad, text="Máquina:", bg=cores["bg"], fg=cores["fg"]).grid(row=0, column=0)
-        self.en_n = tk.Entry(f_cad, bg=cores["entry_bg"], fg=cores["fg"], insertbackground=cores["fg"])
-        self.en_n.grid(row=0, column=1, padx=5)
-        
-        tk.Label(f_cad, text="Agenda (AAAA-MM-DD):", bg=cores["bg"], fg=cores["fg"]).grid(row=0, column=2)
-        self.en_a = tk.Entry(f_cad, bg=cores["entry_bg"], fg=cores["fg"], insertbackground=cores["fg"])
-        self.en_a.grid(row=0, column=3, padx=5)
-        self.en_a.bind("<KeyRelease>", lambda e: aplicar_mascara_data(e, self.en_a))
-        
-        tk.Button(f_cad, text="CADASTRAR", bg="green", fg="white", font=("bold"),
-                  command=self.app.add_maq).grid(row=0, column=4, padx=10)
+        # Frame interno para alinhar todos horizontalmente
+        f_btns_row = tk.Frame(f_cad, bg=cores["bg"])
+        f_btns_row.pack(fill="x", pady=5)
 
+        # Configuração comum para todos os botões
+        btn_params = {"side": "left", "padx": 5, "expand": True, "fill": "both"}
+        largura_padrao = 22 # Define um tamanho fixo para todos
+
+        tk.Button(f_btns_row, text="➕ NOVA MÁQUINA", bg="green", fg="white", font=("Arial", 9, "bold"),
+                  command=self.app.janela_cadastro_maquina, width=largura_padrao).pack(**btn_params)
+
+        tk.Button(f_btns_row, text="⚙️ MANUTENÇÃO", bg="#007bff", fg="white", font=("Arial", 9, "bold"),
+                  command=self.app.janela_manutencao, width=largura_padrao).pack(**btn_params)
+        
+        tk.Button(f_btns_row, text="📋 HISTÓRICO", command=self.app.ver_hist, font=("Arial", 9, "bold"),
+                  bg=cores["btn_bg"], fg=cores["fg"], width=largura_padrao).pack(**btn_params)
+
+        tk.Button(f_btns_row, text="🗑️ EXCLUIR", bg="#f39c12", fg="white", font=("Arial", 9, "bold"),
+                  command=self.confirmar_exclusao, width=largura_padrao).pack(**btn_params)
+        
         # --- TABELA (Treeview) ---
         # Note que agora ela usará o 'style' configurado acima
         self.tree = ttk.Treeview(self.app.root, columns=("N", "U", "P", "S"), show="headings")
@@ -75,16 +86,6 @@ class MainInterface:
         # --- BOTÕES DE AÇÃO ---
         f_btn = tk.Frame(self.app.root, pady=10, bg=cores["bg"])
         f_btn.pack()
-        
-        tk.Button(f_btn, text="⚙️ REGISTRAR MANUTENÇÃO", bg="#007bff", fg="white", 
-                  command=self.app.janela_manutencao, padx=10).pack(side="left", padx=5)
-        
-        tk.Button(f_btn, text="📋 HISTÓRICO", command=self.app.ver_hist, 
-                  bg=cores["btn_bg"], fg=cores["fg"], padx=10).pack(side="left", padx=5)
-
-        btn_del = tk.Button(f_btn, text="🗑️ EXCLUIR MÁQUINA", bg="#f39c12", fg="white",
-                           command=self.confirmar_exclusao, padx=10)
-        btn_del.pack(side="left", padx=5)
         
         tk.Button(f_btn, text="🚪 SAIR", command=self.app.deslogar, 
                   bg="#dc3545", fg="white", padx=15).pack(side="right", padx=20)

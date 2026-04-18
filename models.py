@@ -8,14 +8,15 @@ class Usuario:
         self.senha = senha
 
 class Maquina:
-    def __init__(self, nome, ultima_manutencao, agendamento=None, insumos_usados=None, procedimentos=None, fotos=None):
+    def __init__(self, nome, ultima_manutencao, agendamento=None, insumos_usados=None, procedimentos=None, fotos=None, manual=None):
         self.nome = nome
         self.ultima_manutencao = ultima_manutencao
         self.agendamento = agendamento
         self.insumos_usados = insumos_usados if insumos_usados else []
         self.procedimentos = procedimentos if procedimentos else []
         self.fotos = fotos if fotos else [] # Lista de caminhos das imagens
-
+        self.manual = manual if manual else []
+        
     def get_status_agendamento(self):
         if not self.agendamento: return "Sem agendamento", "black"
         try:
