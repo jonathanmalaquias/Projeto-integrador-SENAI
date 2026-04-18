@@ -72,6 +72,9 @@ class MainInterface:
         tk.Button(f_btns_row, text="📋 HISTÓRICO", command=self.app.ver_hist, font=("Arial", 9, "bold"),
                   bg=cores["btn_bg"], fg=cores["fg"], width=largura_padrao).pack(**btn_params)
 
+        tk.Button(f_btns_row, text="✏️ EDITAR", bg="#17a2b8", fg="white", font=("Arial", 9, "bold"),
+                  command=self.app.janela_editar_maquina, width=largura_padrao).pack(**btn_params)
+
         tk.Button(f_btns_row, text="🗑️ EXCLUIR", bg="#f39c12", fg="white", font=("Arial", 9, "bold"),
                   command=self.confirmar_exclusao, width=largura_padrao).pack(**btn_params)
         
