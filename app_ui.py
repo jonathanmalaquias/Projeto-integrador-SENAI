@@ -49,8 +49,6 @@ class MainInterface:
 
 # --- GERENCIAR MÁQUINAS ---
 
-# --- GERENCIAR MÁQUINAS ---
-
         f_cad = tk.LabelFrame(self.app.root, text=" Gerenciar Máquinas ", padx=10, pady=10, 
                               bg=cores["bg"], fg=cores["fg"])
         f_cad.pack(fill="x", padx=20, pady=10)

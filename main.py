@@ -58,10 +58,10 @@ class SIGMA:
 
         def selecionar_manual():
             # Aceita PDF, Texto ou todos os arquivos
-            arq = filedialog.askopenfilename(filetypes=[("Documentos", "*.pdf *.txt *.docx"), ("Todos", "*.*")])
+            arq = filedialog.askopenfilename(parent=win,filetypes=[("Documentos", "*.pdf *.txt *.docx"), ("Todos", "*.*")])
             if arq:
                 caminho_manual.set(arq)
-                lbl_manual.config(text=f"📄 {os.path.basename(arq)}", fg="blue")
+                lbl_manual.config(text=f"📄 {os.path.basename(arq)}", fg="green")
 
         tk.Button(win, text="📂 ANEXAR MANUAL (PDF/TXT)", command=selecionar_manual).pack(pady=10)
         lbl_manual.pack()
@@ -69,7 +69,7 @@ class SIGMA:
         def salvar_nova():
             nome = en_nome.get().strip()
             if not nome:
-                messagebox.showwarning("Erro", "O nome é obrigatório!")
+                messagebox.showwarning("Erro", "O nome é obrigatório!", parent=win)
                 return
             
             # Copia o manual para a pasta do sistema
@@ -80,14 +80,16 @@ class SIGMA:
             self.db.salvar(self.maquinas, self.usuarios)
             self.main_ui.atualizar_lista()
             win.destroy()
-            messagebox.showinfo("Sucesso", f"{nome} cadastrado!")
+            messagebox.showinfo("Sucesso", f"{nome} cadastrado!", parent=win)
 
         tk.Button(win, text="SALVAR MÁQUINA", bg="green", fg="white", font=("bold"),
                   command=salvar_nova, height=2).pack(pady=30)
         
     def ver_hist(self):
         sel = self.main_ui.tree.selection()
-        if not sel: return
+        if not sel: 
+            messagebox.showwarning("Aviso", "Selecione uma máquina na lista!")
+            return
         m_nome = self.main_ui.tree.item(sel)['values'][0]
         cores = TEMAS[self.tema_atual]
         
@@ -109,7 +111,7 @@ class SIGMA:
             if maquina_obj.manual and os.path.exists(maquina_obj.manual):
                 os.startfile(maquina_obj.manual)
             else:
-                messagebox.showinfo("Aviso", "Manual não disponível.")
+                messagebox.showinfo("Aviso", "Manual não disponível.", parent=win_h)
 
         tk.Button(header_top, text="📖 VER MANUAL", font=("Arial", 8, "bold"),
                   bg="#6c757d", fg="white", command=abrir_manual).pack(side="right")
@@ -155,7 +157,7 @@ class SIGMA:
             if caminho_img != "N/A":
                 def abrir_img(p=caminho_img):
                     if os.path.exists(p): os.startfile(p)
-                    else: messagebox.showerror("Erro", "Foto não encontrada!")
+                    else: messagebox.showerror("Erro", "Foto não encontrada!", parent=win_h)
                 tk.Button(header_card, text="🖼️ VER FOTO", font=("Arial", 7, "bold"),
                           bg="white", fg=cor_barra, bd=0, padx=5, command=abrir_img).pack(side="right", padx=5, pady=2)
                 
@@ -211,9 +213,9 @@ class SIGMA:
                 if os.path.exists(maquina_obj.manual):
                     os.startfile(maquina_obj.manual)
                 else:
-                    messagebox.showerror("Erro", "Arquivo do manual não encontrado!")
+                    messagebox.showerror("Erro", "Arquivo do manual não encontrado!", parent=win)
             else:
-                messagebox.showinfo("Aviso", "Esta máquina não possui manual cadastrado.")
+                messagebox.showinfo("Aviso", "Esta máquina não possui manual cadastrado.", parent=win)
 
         # Botão do Manual (só aparece se quiser, ou fica cinza se não tiver)
         btn_manual = tk.Button(header_manut, text="📖 VER MANUAL", font=("Arial", 8, "bold"),
@@ -235,7 +237,7 @@ class SIGMA:
         lbl_foto = tk.Label(win, text="Nenhuma foto anexada", font=("Arial", 8), bg=cores["bg"], fg="gray")
         
         def selecionar_foto():
-            arq = filedialog.askopenfilename(filetypes=[("Imagens", "*.jpg *.png *.jpeg")])
+            arq = filedialog.askopenfilename(parent=win,filetypes=[("Imagens", "*.jpg *.png *.jpeg")])
             if arq: 
                 caminho_foto.set(arq)
                 lbl_foto.config(text="📸 Foto pronta!", fg="#28a745")
@@ -248,7 +250,7 @@ class SIGMA:
             ins_val = txt_ins.get('1.0', 'end-1c').strip().replace("\n", ", ")
 
             if not proc_val or not ins_val:
-                messagebox.showwarning("Aviso", "Preencha os procedimentos e insumos!")
+                messagebox.showwarning("Aviso", "Preencha os procedimentos e insumos!", parent=win)
                 return
 
             agora = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -277,7 +279,7 @@ class SIGMA:
     def janela_editar_maquina(self):
         sel = self.main_ui.tree.selection()
         if not sel:
-            messagebox.showwarning("Aviso", "Selecione uma máquina!")
+            messagebox.showwarning("Aviso", "Selecione uma máquina da lista!")
             return
 
         m_nome_antigo = self.main_ui.tree.item(sel)['values'][0]
@@ -317,7 +319,7 @@ class SIGMA:
                               bg=cores["bg"], fg="gray", font=("Arial", 8))
         
         def trocar_manual():
-            arq = filedialog.askopenfilename(filetypes=[("Documentos", "*.pdf *.txt")])
+            arq = filedialog.askopenfilename(parent=win_edit,filetypes=[("Documentos", "*.pdf *.txt")])
             if arq:
                 caminho_manual.set(arq)
                 lbl_manual.config(text=os.path.basename(arq), fg="#28a745")

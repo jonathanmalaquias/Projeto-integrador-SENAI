@@ -57,7 +57,7 @@ class AuthInterface:
                     self.app.abrir_principal()
                     return
             
-            messagebox.showerror("Erro", "Login Inválido")
+            messagebox.showerror("Erro", "Login Inválido", parent=self.app.root)
 
         tk.Button(f, text="ENTRAR", bg="#004a8d", fg="white", font=("Arial", 10, "bold"),
                   command=logar, width=25).pack(pady=10)
